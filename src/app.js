@@ -22,17 +22,17 @@ const urls = [
   's:year:>>:1999',
   's:note:=:Special notes include\\: details',
   'z:unknown:=:value',
-].map((url) => {
-  try {
-    return parser.extract(url)
-  }
-  catch(e) {
-    return null
-  }
-}).filter((object) => {
-  return object;
-});
-
+]
+  .map((url) => {
+    try {
+      return parser.extract(url);
+    } catch (e) {
+      return null;
+    }
+  })
+  .filter((object) => {
+    return object;
+  });
 
 const MongoDBOp = {
   '=': '$eq',
@@ -44,22 +44,22 @@ const MongoDBOp = {
   '<>': '$in',
   '<!>': '$nin',
   '~': '$regex',
-  '!~': '$not'
+  '!~': '$not',
 };
 
-const exp1 = function(filter, op) {
+const exp1 = function (filter, op) {
   const $type = filter.delimiter === '|' ? '$or' : '$and';
 
-  return !filter.multi 
-    ? { [filter.field]: { [op]: filter.value } } 
-    : { 
-      [$type]: filter.value.map(value => ({
-        [filter.field]: { [op]: value }
-      })) 
-    };
+  return !filter.multi
+    ? { [filter.field]: { [op]: filter.value } }
+    : {
+        [$type]: filter.value.map((value) => ({
+          [filter.field]: { [op]: value },
+        })),
+      };
 };
 
-const builder = function(filter) {
+const builder = function (filter) {
   switch (filter.operator) {
     case '=':
       return exp1(filter, '$eq');
@@ -74,43 +74,47 @@ const builder = function(filter) {
     case '<=':
       return exp1(filter, '$lte');
     case '><':
-      return { '$and': [
-        { [filter.field]: { '$gt': filter.value[0] } },
-        { [filter.field]: { '$lt': filter.value[1] } }
-      ] };
+      return {
+        $and: [
+          { [filter.field]: { $gt: filter.value[0] } },
+          { [filter.field]: { $lt: filter.value[1] } },
+        ],
+      };
     case '>!<':
-      return { '$or': [
-        { [filter.field]: { '$lt': filter.value[0] } },
-        { [filter.field]: { '$gt': filter.value[1] } }
-      ] };
+      return {
+        $or: [
+          { [filter.field]: { $lt: filter.value[0] } },
+          { [filter.field]: { $gt: filter.value[1] } },
+        ],
+      };
     case '<>':
-      return { [filter.field]: { '$in': filter.value } };
+      return { [filter.field]: { $in: filter.value } };
     case '<!>':
-      return { [filter.field]: { '$nin': filter.value } };
-    case '~': 
-      return { [filter.field]: { '$regex': filter.value, '$options': 'i' } }; 
+      return { [filter.field]: { $nin: filter.value } };
+    case '~':
+      return { [filter.field]: { $regex: filter.value, $options: 'i' } };
     case '!~':
-      return { [filter.field]: { '$not': { '$regex': filter.value, '$options': 'i' } } }; 
+      return {
+        [filter.field]: { $not: { $regex: filter.value, $options: 'i' } },
+      };
     case '!':
-      return { [filter.field]: { '$exists': false } };
+      return { [filter.field]: { $exists: false } };
     case '!!':
-      return { [filter.field]: { '$exists': true } };
+      return { [filter.field]: { $exists: true } };
     default:
       throw new Error(`Unsupported operator: ${filter.operator}`);
   }
 };
 
-
 urls.forEach((exp) => {
   // console.log('\n\n\n\n\n', '---', exp, '---');
-  exp.forEach(e => {
+  exp.forEach((e) => {
     const e2 = JSON.stringify(builder(e));
     console.log(e, '\n', e2, '\n\n\n');
 
     return e2;
   });
 });
-
 
 // urls.forEach((url) => {
 //   try {

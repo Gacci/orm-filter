@@ -1,5 +1,5 @@
 /**
- * The Parser class is designed to convert query strings into structured objects 
+ * The Parser class is designed to convert query strings into structured objects
  * of type FilterQuery, enabling structured data retrieval based on filter criteria.
  * This class plays a crucial role in applications where data needs to be fetched
  * or manipulated based on dynamic query inputs.
@@ -9,7 +9,7 @@
  *    filter=type:field:operator:value
  *
  * Type:
- * The 'type' parameter specifies the data type of the field being queried and 
+ * The 'type' parameter specifies the data type of the field being queried and
  * supports the following options:
  *    - 's' (String): Textual data.
  *    - 'b' (Boolean): True or False values.
@@ -18,11 +18,11 @@
  *    - 'v' (Void): No data (used for null or undefined values).
  *
  * Field:
- * The 'field' represents the name of the data field the query targets. This is 
+ * The 'field' represents the name of the data field the query targets. This is
  * typically the column name in a database or the key in a JSON object.
  *
  * Operator:
- * Operators define the condition under which the field value is compared. The 
+ * Operators define the condition under which the field value is compared. The
  * choice of operators is dependent on the 'type' specified. Supported operators include:
  *    - '=': Equal to.
  *    - '!=': Not equal to.
@@ -38,8 +38,8 @@
  *    - '!': Not (used for negation).
  *
  * Value:
- * The 'value' parameter is restricted by the type of the field and the operator used. 
- * For example, Boolean types can only utilize the '=' and '!=' operators with 
+ * The 'value' parameter is restricted by the type of the field and the operator used.
+ * For example, Boolean types can only utilize the '=' and '!=' operators with
  * the values 'true' or 'false':
  *    - 'b:verified:=:true': Checks if the 'verified' field is true.
  *    - 'b:verified:=:false': Checks if the 'verified' field is false.
@@ -47,14 +47,13 @@
  *    - 'b:verified:!=:false': Checks if the 'verified' field is not false.
  *
  * For data types like 'date' (d) or 'number' (n), applicable operators include
- * '=', '!=', '>', '>=', '<', '<=', and the range operators '><' and '>!<'. Range 
- * operators allow the specification of an inclusive or exclusive range using a 
+ * '=', '!=', '>', '>=', '<', '<=', and the range operators '><' and '>!<'. Range
+ * operators allow the specification of an inclusive or exclusive range using a
  * specific format:
- *    - 'filter=type:field:operator:[lower,higher]': Defines a range between 'lower' 
- *      and 'higher' values, where the inclusivity or exclusivity is determined 
+ *    - 'filter=type:field:operator:[lower,higher]': Defines a range between 'lower'
+ *      and 'higher' values, where the inclusivity or exclusivity is determined
  *      by the operator.
  */
-
 
 import {
   BooleanFilterQuery,
@@ -75,9 +74,9 @@ export class Parser {
     allowedKeys: ['*'],
   };
 
-  private buffer: FilterQuery[] = [];
+  private stack: FilterQuery[] = [];
   private filter: FilterQuery;
-  private stack: string[];
+  private buffer: string[];
   private chr: string;
   private escaped: boolean;
 
@@ -89,7 +88,7 @@ export class Parser {
     this.filter = <FilterQuery>{};
     this.escaped = false;
     this.chr = '';
-    this.stack = [];
+    this.buffer = [];
   }
 
   private isValidKey(target: string): boolean | undefined {
@@ -174,13 +173,14 @@ export class Parser {
         throw new Error(`Invalid value types`);
       }
 
-      if ( !filter.multi ) {
-        if ( nums?.length !== 1 ) {
+      if (!filter.multi) {
+        if (nums?.length !== 1) {
           throw new Error(`Expecting 1 numeric value, ${nums.length} given`);
         }
 
-        return <NumberFilterQuery>{ 
-          ...filter, value: nums.pop()
+        return <NumberFilterQuery>{
+          ...filter,
+          value: nums.pop(),
         };
       }
 
@@ -211,8 +211,8 @@ export class Parser {
         throw new Error(`Invalid value types`);
       }
 
-      if ( !filter.multi ) {
-        if ( dates?.length !== 1 ) {
+      if (!filter.multi) {
+        if (dates?.length !== 1) {
           throw new Error(`Expecting 1 date, ${dates.length} given`);
         }
 
@@ -260,7 +260,7 @@ export class Parser {
   }
 
   public extract(str: string, options?: ParserOptions): FilterQuery[] {
-    this.buffer = [];
+    this.stack = [];
     this.opts = {
       ...this.defaults,
       ...options,
@@ -278,17 +278,17 @@ export class Parser {
             );
           }
           if (!this.filter.type) {
-            this.filter.type = this.getFilterType(this.stack.join(''));
+            this.filter.type = this.getFilterType(this.buffer.join(''));
             if (!this.filter.type) {
               throw new Error(`'${this.filter.type}' is an invalid type`);
             }
           } else if (!this.filter.field) {
-            this.filter.field = this.stack.join('');
+            this.filter.field = this.buffer.join('');
             if (!this.isValidKey(this.filter.field)) {
               throw new Error(`'${this.filter.field}' is not an allowed key`);
             }
           } else if (!this.filter.operator) {
-            this.filter.operator = this.getFilterOperator(this.stack.join(''));
+            this.filter.operator = this.getFilterOperator(this.buffer.join(''));
             if (!this.filter.operator) {
               throw new Error(
                 `'${this.filter.operator}' is an invalid operator`
@@ -298,43 +298,43 @@ export class Parser {
             throw new Error(`Unexpected character`);
           }
 
-          this.stack = [];
+          this.buffer = [];
         } else {
-          this.stack.push(this.chr);
+          this.buffer.push(this.chr);
           this.escaped = false;
         }
       } else if (this.chr === '|' || this.chr === ',') {
         if (this.escaped) {
           throw new Error(`Invalid escaped character ${this.chr}`);
         }
-        if (this.stack.length && !this.filter.multi) {
+        if (this.buffer.length && !this.filter.multi) {
           if (this.filter.type && this.filter.field && !this.filter.operator) {
             throw new Error(
               `Malformed url: '${this.filter.type}' missing type`
             );
           }
 
-          this.buffer.push(
+          this.stack.push(
             this.transform(<FilterQuery>{
               ...this.filter,
-              value: this.stack.join(''),
+              value: this.buffer.join(''),
             })
           );
 
           this.reset();
         } else if (this.filter.multi) {
-          this.stack.push(this.chr);
+          this.buffer.push(this.chr);
         }
       } else if (this.chr === ']' || this.chr === ')') {
         if (this.escaped) {
           throw new Error(`Invalid escaped character ${this.chr}`);
         }
 
-        this.buffer.push(
+        this.stack.push(
           this.transform(<FilterQuery>{
             ...this.filter,
             delimiter: this.chr === ')' ? '|' : ',',
-            value: this.stack.join(''),
+            value: this.buffer.join(''),
           })
         );
 
@@ -345,28 +345,28 @@ export class Parser {
         }
 
         this.filter.multi = true;
-        this.stack = [];
+        this.buffer = [];
       } else if (this.chr === '\\') {
         this.escaped = true;
       } else {
-        this.stack.push(this.chr);
+        this.buffer.push(this.chr);
       }
     }
 
     // Handle any remaining characters in the stack
-    if (this.stack.length && (this.filter.field || this.filter.operator)) {
+    if (this.buffer.length && (this.filter.field || this.filter.operator)) {
       if (this.filter.multi) {
         throw new Error('Malformed url, unbalanced parenthesis or brackets.');
       }
 
-      this.buffer.push(
+      this.stack.push(
         this.transform(<FilterQuery>{
           ...this.filter,
-          value: this.stack.join(''),
+          value: this.buffer.join(''),
         })
       );
     }
 
-    return this.buffer;
+    return this.stack;
   }
 }

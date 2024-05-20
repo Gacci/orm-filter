@@ -1,20 +1,19 @@
-
-import { Parser } from './parser';
+// import { Parser } from './parser';
 import { FilterQuery } from '../types/filter-query';
 import { Operator } from '../enums/operator.enum';
 
 // import { Operator } from './enums/operator.enum';
 
-const parser = new Parser();
+// const parser = new Parser();
 
-export const generateORMFilter = (query: string) => {
-    return parser.extract(query)
-        .map((filter: FilterQuery) =>
-            fromObjectMongoExpression(filter)
-        );
-};
+// export const generateORMFilter = (query: string) => {
+//     return parser.extract(query)
+//         .map((filter: FilterQuery) =>
+//             fromObjectMongoExpression(filter)
+//         );
+// };
 
-const toMongoExpression = function (filter: FilterQuery, op) {
+export const toMongoExpression = function (filter: FilterQuery, op) {
   if (!filter.multi || !Array.isArray(filter.value)) {
     return { [filter.field]: { [op]: filter.value } };
   }
@@ -26,7 +25,7 @@ const toMongoExpression = function (filter: FilterQuery, op) {
   };
 };
 
-const fromObjectMongoExpression = function (filter: FilterQuery) {
+export const fromObjectMongoExpression = function (filter: FilterQuery) {
   switch (filter.operator) {
     case Operator.eq:
       return toMongoExpression(filter, '$eq');
